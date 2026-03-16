@@ -21,6 +21,70 @@ function dColor(val) {
 }
 const barColor = p => p > 95 ? "#e05252" : p > 75 ? "#f5a623" : "#52c97e";
 
+// ─── EXCEL EXPORT ─────────────────────────────────────────────────────────────
+function exportCargaExcel(carga, loadedArticles, items, suppliers) {
+  const suppName = id => suppliers.find(s => s.id === id)?.name || "";
+
+  // Build rows
+  const rows = loadedArticles.map(a => {
+    const bultos = items[a.id] || 0;
+    const uxb = parseFloat(a.unidadesXBulto) || 1;
+    const cbm = parseFloat(a.cbmBulto) || 0;
+    const kg = parseFloat(a.kgBulto) || 0;
+    const price = parseFloat(a.price) || 0;
+    return {
+      Proveedor: suppName(a.supplierId),
+      Rubro: a.rubro || "",
+      Familia: a.familia || "",
+      Artículo: a.name,
+      Descripción: a.description || "",
+      [`Precio ${a.currency}`]: price,
+      "Uds x Bulto": uxb,
+      "CBM / Bulto": cbm,
+      "Kg / Bulto": kg,
+      "Bultos Pedidos": bultos,
+      "Total Unidades": Math.round(uxb * bultos),
+      "Total CBM": parseFloat((cbm * bultos).toFixed(4)),
+      "Total USD": parseFloat((price * uxb * bultos).toFixed(2)),
+    };
+  });
+
+  // Totals row
+  const totalBultos = loadedArticles.reduce((acc, a) => acc + (items[a.id]||0), 0);
+  const totalUnits  = loadedArticles.reduce((acc, a) => acc + (parseFloat(a.unidadesXBulto)||1) * (items[a.id]||0), 0);
+  const totalCbm    = loadedArticles.reduce((acc, a) => acc + (parseFloat(a.cbmBulto)||0) * (items[a.id]||0), 0);
+  const totalUsd    = loadedArticles.reduce((acc, a) => acc + (parseFloat(a.price)||0) * (parseFloat(a.unidadesXBulto)||1) * (items[a.id]||0), 0);
+
+  rows.push({
+    Proveedor: "TOTAL", Rubro:"", Familia:"", Artículo:"", Descripción:"",
+    "Precio USD":"", "Uds x Bulto":"", "CBM / Bulto":"", "Kg / Bulto":"",
+    "Bultos Pedidos": totalBultos,
+    "Total Unidades": Math.round(totalUnits),
+    "Total CBM": parseFloat(totalCbm.toFixed(4)),
+    "Total USD": parseFloat(totalUsd.toFixed(2)),
+  });
+
+  // Build CSV (works everywhere without library)
+  const headers = Object.keys(rows[0]);
+  const csvRows = [
+    headers.join(","),
+    ...rows.map(r => headers.map(h => {
+      const val = r[h] ?? "";
+      const str = String(val).replace(/"/g, '""');
+      return str.includes(",") || str.includes('"') || str.includes("\n") ? `"${str}"` : str;
+    }).join(","))
+  ];
+  const csv = "\uFEFF" + csvRows.join("\n"); // BOM for Excel UTF-8
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${carga.name.replace(/\s+/g,"_")}_carga.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ─── STYLES ───────────────────────────────────────────────────────────────────
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
@@ -178,6 +242,15 @@ select.fi option{background:#181818;}
 .divider{height:1px;background:var(--border);margin:12px 0;}
 .density-preview{border-radius:7px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;margin-top:9px;border:1px solid;}
 .familia-wrap{position:relative;}
+/* ADD TO LOAD INLINE */
+.atl-panel{background:var(--s3);border:1px solid var(--accent);border-radius:0 0 10px 10px;padding:10px 12px;margin-top:-2px;margin-bottom:9px;}
+.atl-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.atl-select{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;}
+.atl-select:focus{border-color:var(--accent);}
+.atl-select option{background:#181818;}
+.atl-confirm{background:var(--accent);color:#0e0e0e;border:none;border-radius:7px;padding:7px 14px;font-family:var(--fb);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.atl-qty{display:flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:4px 8px;}
+.art-card.expanded{border-color:var(--accent);border-radius:10px 10px 0 0;border-bottom:none;}
 .familia-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-top:none;border-radius:0 0 8px 8px;z-index:50;max-height:160px;overflow-y:auto;}
 .familia-option{padding:9px 12px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .1s;}
 .familia-option:hover{background:var(--s2);}
@@ -335,6 +408,11 @@ export default function CantonImp() {
 
   function suppName(id)  { return suppliers.find(s => s.id === id)?.name || ""; }
   function feriaName(id) { return ferias.find(f => f.id === id)?.name || ""; }
+
+  function onAddToCarga(cargaId, artId, bultos) {
+    db.setCargaItem(cargaId, artId, bultos);
+    showToast(`✅ Agregado a ${cargas.find(c=>c.id===cargaId)?.name || "carga"}`);
+  }
 
   function openSupplierDrill(s, fromTab) {
     setDrillSupplier(s);
@@ -555,7 +633,7 @@ export default function CantonImp() {
             </div>
             {filteredArticles.length === 0
               ? <div className="empty" style={{ padding:"14px 0" }}><div className="empty-text">{feriaArticles.length===0?"No hay artículos en esta feria aún.":"Sin resultados."}</div></div>
-              : filteredArticles.map(a => <ArticleCard key={a.id} a={a} sName={suppName(a.supplierId)} onEdit={() => openEditArticle(a)} onDelete={() => deleteArticle(a.id)}/>)
+              : filteredArticles.map(a => <ArticleCard key={a.id} a={a} sName={suppName(a.supplierId)} onEdit={() => openEditArticle(a)} onDelete={() => deleteArticle(a.id)} cargas={cargas} onAddToCarga={onAddToCarga}/>)
             }
           </>}
 
@@ -596,7 +674,7 @@ export default function CantonImp() {
             {/* Articles list */}
             {drillArticles.length === 0
               ? <div className="empty"><div className="empty-icon">📭</div><div className="empty-text">No hay artículos para este proveedor.</div></div>
-              : drillArticles.map(a => <ArticleCard key={a.id} a={a} sName={drillSupplier.name} onEdit={() => openEditArticle(a)} onDelete={() => deleteArticle(a.id)}/>)
+              : drillArticles.map(a => <ArticleCard key={a.id} a={a} sName={drillSupplier.name} onEdit={() => openEditArticle(a)} onDelete={() => deleteArticle(a.id)} cargas={cargas} onAddToCarga={onAddToCarga}/>)
             }
           </>}
 
@@ -663,6 +741,12 @@ export default function CantonImp() {
               ))}
             </div>
             <button className="btn btn-primary" style={{ marginBottom:14 }} onClick={() => { setPickerSearch(""); setPickerSupp("Todos"); setModal("picker"); }}>+ Agregar artículos</button>
+            {cargaLoaded.length > 0 && (
+              <button className="btn" style={{ width:"100%", marginBottom:14, background:"var(--s2)", border:"1px solid var(--border)", color:"var(--text)", fontSize:13 }}
+                onClick={() => exportCargaExcel(activeCarga, cargaLoaded, cargaItems, suppliers)}>
+                📊 Exportar a Excel
+              </button>
+            )}
             <div className="stitle">Artículos en carga</div>
             {cargaLoaded.length === 0
               ? <div className="empty"><div className="empty-icon">📭</div><div className="empty-text">Tocá "+ Agregar artículos" para empezar a armar esta carga.</div></div>
@@ -937,34 +1021,78 @@ function FamiliaInput({ value, onChange, familias }) {
 }
 
 // ─── ARTICLE CARD ─────────────────────────────────────────────────────────────
-function ArticleCard({ a, sName, onEdit, onDelete }) {
+function ArticleCard({ a, sName, onEdit, onDelete, cargas, onAddToCarga }) {
   const dv = densidadValor(a.cbmBulto, a.unidadesXBulto, a.price);
   const dc = dColor(dv);
+  const [expanded, setExpanded] = React.useState(false);
+  const [selCarga, setSelCarga] = React.useState("");
+  const [bultos, setBultos] = React.useState(1);
+
+  // auto-select first carga
+  React.useEffect(() => {
+    if (cargas && cargas.length > 0 && !selCarga) setSelCarga(cargas[0].id);
+  }, [cargas]);
+
+  function handleAdd() {
+    if (!selCarga || bultos < 1) return;
+    onAddToCarga(selCarga, a.id, bultos);
+    setExpanded(false);
+    setBultos(1);
+  }
+
   return (
-    <div className="art-card">
-      <div className="art-thumb">{a.photo?<img src={a.photo} alt={a.name}/>:"📦"}</div>
-      <div className="art-body">
-        <div className="art-supplier">{sName}</div>
-        <div className="art-name">{a.name}</div>
-        <div className="art-tags">
-          <span className="tag">{a.rubro}</span>
-          {a.familia && <span className="tag">{a.familia}</span>}
-          {a.cbmBulto && <span className="tag">{a.cbmBulto}m³/b</span>}
-          {a.unidadesXBulto && <span className="tag">{a.unidadesXBulto}u/b</span>}
-          {a.minBultos && <span className="tag">mín {a.minBultos}b</span>}
-        </div>
-        <div className="art-bottom">
-          <div>
-            <div className="art-currency">{a.currency}</div>
-            <div className="art-price">{parseFloat(a.price).toLocaleString("es-AR",{minimumFractionDigits:2})}</div>
+    <>
+      <div className={`art-card ${expanded ? "expanded" : ""}`}>
+        <div className="art-thumb">{a.photo?<img src={a.photo} alt={a.name}/>:"📦"}</div>
+        <div className="art-body">
+          <div className="art-supplier">{sName}</div>
+          <div className="art-name">{a.name}</div>
+          <div className="art-tags">
+            <span className="tag">{a.rubro}</span>
+            {a.familia && <span className="tag">{a.familia}</span>}
+            {a.cbmBulto && <span className="tag">{a.cbmBulto}m³/b</span>}
+            {a.unidadesXBulto && <span className="tag">{a.unidadesXBulto}u/b</span>}
+            {a.minBultos && <span className="tag">mín {a.minBultos}b</span>}
           </div>
-          {dv!==null&&dc&&<div className="dbadge" style={{background:dc.bg,borderColor:dc.border,color:dc.text}}>{dv.toFixed(0)}</div>}
+          <div className="art-bottom">
+            <div>
+              <div className="art-currency">{a.currency}</div>
+              <div className="art-price">{parseFloat(a.price).toLocaleString("es-AR",{minimumFractionDigits:2})}</div>
+            </div>
+            {dv!==null&&dc&&<div className="dbadge" style={{background:dc.bg,borderColor:dc.border,color:dc.text}}>{dv.toFixed(0)}</div>}
+            {cargas && cargas.length > 0 && (
+              <button
+                onClick={() => setExpanded(e => !e)}
+                style={{marginLeft:"auto", background: expanded?"var(--accent)":"var(--s2)", border:`1px solid ${expanded?"var(--accent)":"var(--border)"}`, color: expanded?"#0e0e0e":"var(--accent)", borderRadius:7, padding:"4px 10px", fontSize:11, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap"}}>
+                {expanded ? "✕" : "🚢 + Carga"}
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="art-actions">
+          <button className="btn-sm" onClick={onEdit}>✏️</button>
+          <button className="btn-sm" style={{color:"var(--danger)",borderColor:"var(--danger)"}} onClick={onDelete}>✕</button>
         </div>
       </div>
-      <div className="art-actions">
-        <button className="btn-sm" onClick={onEdit}>✏️</button>
-        <button className="btn-sm" style={{color:"var(--danger)",borderColor:"var(--danger)"}} onClick={onDelete}>✕</button>
-      </div>
-    </div>
+      {expanded && cargas && cargas.length > 0 && (
+        <div className="atl-panel">
+          <div className="atl-row">
+            <select className="atl-select" value={selCarga} onChange={e => setSelCarga(e.target.value)}>
+              {cargas.map(c => <option key={c.id} value={c.id}>{c.name} ({c.containerType}')</option>)}
+            </select>
+          </div>
+          <div className="atl-row">
+            <span style={{fontSize:12, color:"var(--muted)", whiteSpace:"nowrap"}}>Bultos:</span>
+            <div className="atl-qty">
+              <button className="qty-btn" onClick={() => setBultos(b => Math.max(1, b-1))}>−</button>
+              <span className="qty-val">{bultos}</span>
+              <button className="qty-btn" onClick={() => setBultos(b => b+1)}>+</button>
+            </div>
+            {a.unidadesXBulto && <span style={{fontSize:11, color:"var(--muted)", fontFamily:"var(--fm)"}}>{bultos * parseFloat(a.unidadesXBulto)} uds.</span>}
+            <button className="atl-confirm" onClick={handleAdd}>✅ Agregar</button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
