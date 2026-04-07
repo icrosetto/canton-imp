@@ -1043,7 +1043,7 @@ function ArticleCard({ a, sName, onEdit, onDelete, cargas, onAddToCarga }) {
   const dc = dColor(dv);
   const [expanded, setExpanded] = React.useState(false);
   const [selCarga, setSelCarga] = React.useState("");
-  const [bultos, setBultos] = React.useState(1);
+  const [bultos, setBultos] = React.useState("1");
 
   // auto-select first carga
   React.useEffect(() => {
@@ -1051,10 +1051,11 @@ function ArticleCard({ a, sName, onEdit, onDelete, cargas, onAddToCarga }) {
   }, [cargas]);
 
   function handleAdd() {
-    if (!selCarga || bultos < 1) return;
-    onAddToCarga(selCarga, a.id, bultos);
+    const b = parseInt(bultos) || 0;
+    if (!selCarga || b < 1) return;
+    onAddToCarga(selCarga, a.id, b);
     setExpanded(false);
-    setBultos(1);
+    setBultos("1");
   }
 
   return (
@@ -1101,17 +1102,18 @@ function ArticleCard({ a, sName, onEdit, onDelete, cargas, onAddToCarga }) {
           <div className="atl-row">
             <span style={{fontSize:13, color:"var(--muted)", whiteSpace:"nowrap", fontWeight:600}}>Bultos:</span>
             <div className="atl-qty">
-              <button className="qty-btn" style={{fontSize:20}} onClick={() => setBultos(b => Math.max(1, b-1))}>−</button>
+              <button className="qty-btn" style={{fontSize:20}} onClick={() => setBultos(b => String(Math.max(1, (parseInt(b)||1)-1)))}>−</button>
               <input
                 className="atl-qty-input"
                 type="number"
                 min="1"
                 value={bultos}
-                onChange={e => setBultos(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={e => setBultos(e.target.value)}
+                onBlur={e => { if (!e.target.value || parseInt(e.target.value) < 1) setBultos("1"); }}
               />
-              <button className="qty-btn" style={{fontSize:20}} onClick={() => setBultos(b => b+1)}>+</button>
+              <button className="qty-btn" style={{fontSize:20}} onClick={() => setBultos(b => String((parseInt(b)||0)+1))}>+</button>
             </div>
-            {a.unidadesXBulto && <span style={{fontSize:12, color:"var(--muted)", fontFamily:"var(--fm)"}}>{bultos * parseFloat(a.unidadesXBulto)} uds.</span>}
+            {a.unidadesXBulto && <span style={{fontSize:12, color:"var(--muted)", fontFamily:"var(--fm)"}}>{(parseInt(bultos)||0) * parseFloat(a.unidadesXBulto)} uds.</span>}
             <button className="atl-confirm" onClick={handleAdd}>✅ Agregar</button>
           </div>
         </div>
