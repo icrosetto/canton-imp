@@ -244,13 +244,15 @@ select.fi option{background:#181818;}
 .density-preview{border-radius:7px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;margin-top:9px;border:1px solid;}
 .familia-wrap{position:relative;}
 /* ADD TO LOAD INLINE */
-.atl-panel{background:var(--s3);border:1px solid var(--accent);border-radius:0 0 10px 10px;padding:10px 12px;margin-top:-2px;margin-bottom:9px;}
+.atl-panel{background:var(--s3);border:1px solid var(--accent);border-radius:0 0 10px 10px;padding:12px 14px;margin-top:-2px;margin-bottom:9px;}
 .atl-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
-.atl-select{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:7px 10px;color:var(--text);font-family:var(--fb);font-size:13px;outline:none;}
+.atl-select{flex:1;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:9px 12px;color:var(--text);font-family:var(--fb);font-size:14px;outline:none;}
 .atl-select:focus{border-color:var(--accent);}
 .atl-select option{background:#181818;}
-.atl-confirm{background:var(--accent);color:#0e0e0e;border:none;border-radius:7px;padding:7px 14px;font-family:var(--fb);font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;}
-.atl-qty{display:flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:4px 8px;}
+.atl-confirm{background:var(--accent);color:#0e0e0e;border:none;border-radius:7px;padding:10px 18px;font-family:var(--fb);font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.atl-qty{display:flex;align-items:center;gap:6px;background:var(--s2);border:1px solid var(--border);border-radius:7px;padding:4px 8px;}
+.atl-qty-input{background:transparent;border:none;color:var(--text);font-family:var(--fm);font-size:16px;font-weight:700;width:48px;text-align:center;outline:none;padding:0;}
+.atl-qty-input::-webkit-inner-spin-button,.atl-qty-input::-webkit-outer-spin-button{-webkit-appearance:none;}
 .art-card.expanded{border-color:var(--accent);border-radius:10px 10px 0 0;border-bottom:none;}
 .familia-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--accent);border-top:none;border-radius:0 0 8px 8px;z-index:50;max-height:160px;overflow-y:auto;}
 .familia-option{padding:9px 12px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .1s;}
@@ -864,7 +866,10 @@ export default function CantonImp({ onSignOut, userEmail }) {
             </div>
             {(()=>{ const dv=densidadValor(af.cbmBulto,af.unidadesXBulto,af.price); if(!dv)return null; const dc=dColor(dv); return <div className="density-preview" style={{background:dc.bg,borderColor:dc.border}}><div style={{fontSize:10,color:dc.text,fontWeight:700,textTransform:"uppercase",letterSpacing:.5}}>Densidad de valor</div><div style={{fontFamily:"var(--fm)",fontSize:14,fontWeight:700,color:dc.text}}>{dv.toFixed(0)} · {dc.label}</div></div>; })()}
           </div>
-          <button className="btn btn-primary" onClick={saveArticle}>✅ Guardar artículo</button>
+          <div style={{display:"flex", gap:10, marginTop:4}}>
+            <button className="btn btn-primary" onClick={saveArticle} style={{flex:2}}>✅ Guardar artículo</button>
+            <button className="btn" onClick={() => { setModal(null); setEditId(null); }} style={{flex:1, background:"transparent", border:"1px solid var(--border)", color:"var(--muted)"}}>Cancelar</button>
+          </div>
         </div></div>}
 
         {/* NUEVA CARGA */}
@@ -1075,8 +1080,8 @@ function ArticleCard({ a, sName, onEdit, onDelete, cargas, onAddToCarga }) {
             {cargas && cargas.length > 0 && (
               <button
                 onClick={() => setExpanded(e => !e)}
-                style={{marginLeft:"auto", background: expanded?"var(--accent)":"var(--s2)", border:`1px solid ${expanded?"var(--accent)":"var(--border)"}`, color: expanded?"#0e0e0e":"var(--accent)", borderRadius:7, padding:"4px 10px", fontSize:11, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap"}}>
-                {expanded ? "✕" : "🚢 + Carga"}
+                style={{marginLeft:"auto", background: expanded?"var(--accent)":"var(--s2)", border:`1px solid ${expanded?"var(--accent)":"var(--border)"}`, color: expanded?"#0e0e0e":"var(--accent)", borderRadius:7, padding:"6px 14px", fontSize:13, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap"}}>
+                {expanded ? "✕ Cerrar" : "🚢 + Carga"}
               </button>
             )}
           </div>
@@ -1094,13 +1099,19 @@ function ArticleCard({ a, sName, onEdit, onDelete, cargas, onAddToCarga }) {
             </select>
           </div>
           <div className="atl-row">
-            <span style={{fontSize:12, color:"var(--muted)", whiteSpace:"nowrap"}}>Bultos:</span>
+            <span style={{fontSize:13, color:"var(--muted)", whiteSpace:"nowrap", fontWeight:600}}>Bultos:</span>
             <div className="atl-qty">
-              <button className="qty-btn" onClick={() => setBultos(b => Math.max(1, b-1))}>−</button>
-              <span className="qty-val">{bultos}</span>
-              <button className="qty-btn" onClick={() => setBultos(b => b+1)}>+</button>
+              <button className="qty-btn" style={{fontSize:20}} onClick={() => setBultos(b => Math.max(1, b-1))}>−</button>
+              <input
+                className="atl-qty-input"
+                type="number"
+                min="1"
+                value={bultos}
+                onChange={e => setBultos(Math.max(1, parseInt(e.target.value) || 1))}
+              />
+              <button className="qty-btn" style={{fontSize:20}} onClick={() => setBultos(b => b+1)}>+</button>
             </div>
-            {a.unidadesXBulto && <span style={{fontSize:11, color:"var(--muted)", fontFamily:"var(--fm)"}}>{bultos * parseFloat(a.unidadesXBulto)} uds.</span>}
+            {a.unidadesXBulto && <span style={{fontSize:12, color:"var(--muted)", fontFamily:"var(--fm)"}}>{bultos * parseFloat(a.unidadesXBulto)} uds.</span>}
             <button className="atl-confirm" onClick={handleAdd}>✅ Agregar</button>
           </div>
         </div>
