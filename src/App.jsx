@@ -258,7 +258,7 @@ select.fi option{background:#181818;}
 `;
 
 // ─── MAIN APP ─────────────────────────────────────────────────────────────────
-export default function CantonImp() {
+export default function CantonImp({ onSignOut, userEmail }) {
   const { ferias, suppliers, articles, cargas, familias, loading, online, db } = useSync();
 
   // local UI state only (not persisted)
@@ -300,8 +300,8 @@ export default function CantonImp() {
   function showToast(msg) { setToast(msg); setTimeout(() => setToast(""), 2400); }
 
   // ── DERIVED ──────────────────────────────────────────────────────────────────
-  const feriaSuppliers  = useMemo(() => suppliers.filter(s => s.feriaId === activeFeria?.id), [suppliers, activeFeria]);
-  const feriaArticles   = useMemo(() => articles.filter(a => a.feriaId === activeFeria?.id),  [articles, activeFeria]);
+  const feriaSuppliers  = useMemo(() => activeFeria ? suppliers.filter(s => s.feriaId === activeFeria.id) : suppliers, [suppliers, activeFeria]);
+  const feriaArticles   = useMemo(() => activeFeria ? articles.filter(a => a.feriaId === activeFeria.id)  : articles,  [articles, activeFeria]);
 
   const filteredArticles = useMemo(() => feriaArticles.filter(a => {
     const s = search.toLowerCase();
@@ -472,6 +472,14 @@ export default function CantonImp() {
               <div className="stat-chip"><strong>{articles.length}</strong>arts.</div>
               <div className="stat-chip"><strong>{cargas.length}</strong>cargas</div>
               <div title={online ? "Sincronizado" : "Sin conexión — datos locales"} style={{ width:8, height:8, borderRadius:"50%", background: online ? "var(--success)" : "var(--danger)", alignSelf:"center", flexShrink:0 }}/>
+              {onSignOut && (
+                <button
+                  title={`Cerrar sesión (${userEmail})`}
+                  onClick={onSignOut}
+                  style={{ background:"transparent", border:"1px solid var(--border)", borderRadius:6, padding:"3px 7px", color:"var(--muted)", fontSize:13, cursor:"pointer", lineHeight:1 }}>
+                  ↩
+                </button>
+              )}
             </div>
           </div>
           {/* Feria badge only relevant in catalog tab */}
@@ -485,7 +493,7 @@ export default function CantonImp() {
           <div className="nav">
             <button className={`nav-btn ${tab==="ferias" ? "active":""}`} onClick={() => setTab("ferias")}>🏛 Ferias</button>
             <button className={`nav-btn ${tab==="proveedores" ? "active":""}`} onClick={() => { setDrillSupplier(null); setTab("proveedores"); }}>🏪 Proveed.</button>
-            <button className={`nav-btn ${tab==="catalog" ? "active":""}`} onClick={() => { if (!activeFeria) return showToast("⚠️ Seleccioná una feria primero"); setDrillSupplier(null); setTab("catalog"); }}>📦 Catálogo</button>
+            <button className={`nav-btn ${tab==="catalog" ? "active":""}`} onClick={() => { setDrillSupplier(null); setTab("catalog"); }}>📦 Catálogo</button>
             <button className={`nav-btn ${tab==="carga" ? "active":""}`} onClick={() => { setActiveCargaId(null); setTab("carga"); }}>🚢 Cargas</button>
           </div>
         </div>
@@ -579,17 +587,19 @@ export default function CantonImp() {
             }
           </>}
 
-          {/* ═══════ CATÁLOGO (per feria) ═══════ */}
-          {tab === "catalog" && activeFeria && !showDrill && <>
-            <div className="stitle">Proveedores</div>
-            <div style={{ display:"flex", gap:8, marginBottom:13 }}>
+          {/* ═══════ CATÁLOGO (per feria o global) ═══════ */}
+          {tab === "catalog" && !showDrill && <>
+            <div className="stitle">{activeFeria ? `Proveedores — ${activeFeria.name}` : "Todos los Proveedores"}</div>
+            {activeFeria && <div style={{ display:"flex", gap:8, marginBottom:13 }}>
               <button className="btn btn-primary" style={{ flex:1, padding:"9px 0", fontSize:13 }} onClick={() => { setSf(emptySupp); setEditId(null); setModal("supplier"); }}>+ Proveedor</button>
               <button className="btn btn-primary" style={{ flex:1, padding:"9px 0", fontSize:13, background:"var(--s2)", color:"var(--text)", border:"1px solid var(--border)" }} onClick={() => openAddArticle("")}>+ Artículo</button>
-            </div>
+            </div>}
+            {!activeFeria && <div style={{ background:"var(--s2)", border:"1px solid var(--border)", borderRadius:8, padding:"9px 12px", marginBottom:12, fontSize:12, color:"var(--muted)" }}>
+              💡 Mostrando todos los artículos. Seleccioná una feria arriba para filtrar o agregar proveedores.
+            </div>}
             {feriaSuppliers.length === 0
-              ? <div className="empty" style={{ padding:"16px 0" }}><div className="empty-icon" style={{ fontSize:28 }}>🏪</div><div className="empty-text">Agregá proveedores para organizar tus artículos.</div></div>
+              ? <div className="empty" style={{ padding:"16px 0" }}><div className="empty-icon" style={{ fontSize:28 }}>🏪</div><div className="empty-text">{activeFeria ? "Agregá proveedores para organizar tus artículos." : "Todavía no cargaste proveedores."}</div></div>
               : (() => {
-                  // group by day
                   const days = [...new Set(feriaSuppliers.map(s => s.day||""))].sort();
                   return days.map(day => (
                     <div key={day}>
@@ -603,14 +613,15 @@ export default function CantonImp() {
                               <div className="supp-name">{s.name}</div>
                               {s.stand && <div className="supp-stand">Stand {s.stand}</div>}
                               {s.description && <div className="supp-desc">{s.description}</div>}
+                              {!activeFeria && <div style={{ fontSize:10, color:"var(--accent)", fontWeight:600 }}>{feriaName(s.feriaId)}</div>}
                             </div>
                             <div style={{ textAlign:"right", flexShrink:0 }}>
                               <div style={{ fontFamily:"var(--fm)", fontSize:14, color:"var(--accent)", fontWeight:700 }}>{sc}</div>
                               <div style={{ fontSize:10, color:"var(--muted)" }}>arts.</div>
-                              <div style={{ display:"flex", gap:3, marginTop:5 }}>
+                              {activeFeria && <div style={{ display:"flex", gap:3, marginTop:5 }}>
                                 <button className="btn-sm" onClick={e => { e.stopPropagation(); setSf({ name:s.name, stand:s.stand, description:s.description, day:s.day||"" }); setEditId(s.id); setModal("supplier"); }}>✏️</button>
                                 <button className="btn-sm" style={{ color:"var(--danger)", borderColor:"var(--danger)" }} onClick={e => { e.stopPropagation(); db.deleteSupplier(s.id); }}>✕</button>
-                              </div>
+                              </div>}
                             </div>
                           </div>
                         );
@@ -621,7 +632,7 @@ export default function CantonImp() {
             }
 
             <div className="divider"/>
-            <div className="stitle">Todos los artículos</div>
+            <div className="stitle">Artículos</div>
             <div className="search-wrap"><span className="search-icon">🔍</span><input placeholder="Buscar nombre, rubro, familia, proveedor..." value={search} onChange={e => setSearch(e.target.value)}/></div>
             <div className="chips">
               <span style={{ fontSize:10, color:"var(--muted)", paddingTop:5, whiteSpace:"nowrap" }}>Prov.:</span>
@@ -632,7 +643,7 @@ export default function CantonImp() {
               {["Todos",...RUBROS].map(r => <button key={r} className={`chip ${filterRubro===r?"active":""}`} onClick={() => setFilterRubro(r)}>{r}</button>)}
             </div>
             {filteredArticles.length === 0
-              ? <div className="empty" style={{ padding:"14px 0" }}><div className="empty-text">{feriaArticles.length===0?"No hay artículos en esta feria aún.":"Sin resultados."}</div></div>
+              ? <div className="empty" style={{ padding:"14px 0" }}><div className="empty-text">{feriaArticles.length===0?"No hay artículos cargados aún.":"Sin resultados."}</div></div>
               : filteredArticles.map(a => <ArticleCard key={a.id} a={a} sName={suppName(a.supplierId)} onEdit={() => openEditArticle(a)} onDelete={() => deleteArticle(a.id)} cargas={cargas} onAddToCarga={onAddToCarga}/>)
             }
           </>}
