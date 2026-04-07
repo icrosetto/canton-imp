@@ -34,6 +34,8 @@ function exportCargaExcel(carga, loadedArticles, items, suppliers) {
     const price = parseFloat(a.price) || 0;
     return {
       Proveedor: suppName(a.supplierId),
+      "Cód. Proveedor": a.codProv || "",
+      "Cód. Bazar y Cia": a.codBYC || "",
       Rubro: a.rubro || "",
       Familia: a.familia || "",
       Artículo: a.name,
@@ -56,7 +58,7 @@ function exportCargaExcel(carga, loadedArticles, items, suppliers) {
   const totalUsd    = loadedArticles.reduce((acc, a) => acc + (parseFloat(a.price)||0) * (parseFloat(a.unidadesXBulto)||1) * (items[a.id]||0), 0);
 
   rows.push({
-    Proveedor: "TOTAL", Rubro:"", Familia:"", Artículo:"", Descripción:"",
+    Proveedor: "TOTAL", "Cód. Proveedor":"", "Cód. Bazar y Cia":"", Rubro:"", Familia:"", Artículo:"", Descripción:"",
     "Precio USD":"", "Uds x Bulto":"", "CBM / Bulto":"", "Kg / Bulto":"",
     "Bultos Pedidos": totalBultos,
     "Total Unidades": Math.round(totalUnits),
@@ -280,7 +282,7 @@ export default function CantonImp({ onSignOut, userEmail }) {
 
   const emptyFeria = { name: "", location: "", date: "", notes: "" };
   const emptySupp  = { name: "", stand: "", description: "", day: "" };
-  const emptyArt   = { name: "", rubro: "Bazar", familia: "", description: "", price: "", currency: "USD", cbmBulto: "", kgBulto: "", unidadesXBulto: "", minBultos: "", photo: "", supplierId: "" };
+  const emptyArt   = { name: "", rubro: "Bazar", familia: "", description: "", codProv: "", codBYC: "", price: "", currency: "USD", cbmBulto: "", kgBulto: "", unidadesXBulto: "", minBultos: "", photo: "", supplierId: "" };
 
   const [ff, setFf] = useState(emptyFeria);
   const [sf, setSf] = useState(emptySupp);
@@ -405,7 +407,7 @@ export default function CantonImp({ onSignOut, userEmail }) {
 
   function openAddArticle(suppId) { setAf({ ...emptyArt, supplierId: suppId || "" }); setEditId(null); setModal("article"); }
   function openEditArticle(a) {
-    setAf({ name: a.name, rubro: a.rubro, familia: a.familia||"", description: a.description||"", price: a.price, currency: a.currency, cbmBulto: a.cbmBulto||"", kgBulto: a.kgBulto||"", unidadesXBulto: a.unidadesXBulto||"", minBultos: a.minBultos||"", photo: a.photo||"", supplierId: a.supplierId });
+    setAf({ name: a.name, rubro: a.rubro, familia: a.familia||"", description: a.description||"", codProv: a.codProv||"", codBYC: a.codBYC||"", price: a.price, currency: a.currency, cbmBulto: a.cbmBulto||"", kgBulto: a.kgBulto||"", unidadesXBulto: a.unidadesXBulto||"", minBultos: a.minBultos||"", photo: a.photo||"", supplierId: a.supplierId });
     setEditId(a.id); setModal("article");
   }
 
@@ -846,6 +848,10 @@ export default function CantonImp({ onSignOut, userEmail }) {
               </select></div>
             <div className="fg"><label className="flabel">Familia</label><FamiliaInput value={af.familia} onChange={v=>setAf(f=>({...f,familia:v}))} familias={familias}/></div>
           </div>
+          <div className="frow2">
+            <div className="fg"><label className="flabel">Cód. Proveedor</label><input className="fi" placeholder="ej: ABC-001" value={af.codProv} onChange={e=>setAf(f=>({...f,codProv:e.target.value}))}/></div>
+            <div className="fg"><label className="flabel">Cód. Bazar y Cia</label><input className="fi" placeholder="opcional" value={af.codBYC} onChange={e=>setAf(f=>({...f,codBYC:e.target.value}))}/></div>
+          </div>
           <div className="fg"><label className="flabel">Descripción</label><textarea className="fi" placeholder="Material, colores, código..." value={af.description} onChange={e=>setAf(f=>({...f,description:e.target.value}))}/></div>
           <div className="frow2">
             <div className="fg"><label className="flabel">Precio unit. *</label><input className="fi" type="number" placeholder="0.00" value={af.price} onChange={e=>setAf(f=>({...f,price:e.target.value}))}/></div>
@@ -1068,6 +1074,8 @@ function ArticleCard({ a, sName, onEdit, onDelete, cargas, onAddToCarga }) {
           <div className="art-tags">
             <span className="tag">{a.rubro}</span>
             {a.familia && <span className="tag">{a.familia}</span>}
+            {a.codProv && <span className="tag" style={{color:"var(--accent)",borderColor:"var(--accent)"}}>#{a.codProv}</span>}
+            {a.codBYC && <span className="tag" style={{color:"var(--success)",borderColor:"var(--success)"}}>BYC:{a.codBYC}</span>}
             {a.cbmBulto && <span className="tag">{a.cbmBulto}m³/b</span>}
             {a.unidadesXBulto && <span className="tag">{a.unidadesXBulto}u/b</span>}
             {a.minBultos && <span className="tag">mín {a.minBultos}b</span>}

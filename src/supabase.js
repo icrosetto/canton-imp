@@ -1,9 +1,4 @@
 // src/supabase.js
-// ─────────────────────────────────────────────────────────────
-//  Reemplazá VITE_SUPABASE_URL y VITE_SUPABASE_ANON_KEY
-//  con los valores de tu proyecto en:
-//  Supabase Dashboard → Settings → API
-// ─────────────────────────────────────────────────────────────
 import { createClient } from "@supabase/supabase-js";
 
 const URL  = import.meta.env.VITE_SUPABASE_URL;
@@ -30,7 +25,8 @@ export function dbToArticle(r) {
     description: r.description||"", price: r.price||"", currency: r.currency||"USD",
     cbmBulto: r.cbm_bulto||"", kgBulto: r.kg_bulto||"",
     unidadesXBulto: r.unidades_x_bulto||"", minBultos: r.min_bultos||"",
-    photo: r.photo||""
+    photo: r.photo||"",
+    codProv: r.cod_prov||"", codBYC: r.cod_byc||""
   };
 }
 export function dbToCarga(r, itemRows) {
@@ -46,6 +42,7 @@ export function articleToDb(a)  {
     id:a.id, feria_id:a.feriaId, supplier_id:a.supplierId,
     name:a.name, rubro:a.rubro, familia:a.familia, description:a.description,
     price:a.price, currency:a.currency, cbm_bulto:a.cbmBulto, kg_bulto:a.kgBulto,
-    unidades_x_bulto:a.unidadesXBulto, min_bultos:a.minBultos, photo:a.photo
+    unidades_x_bulto:a.unidadesXBulto, min_bultos:a.minBultos, photo:a.photo,
+    cod_prov:a.codProv||null, cod_byc:a.codBYC||null
   };
 }
